@@ -1,0 +1,35 @@
+Subject: [PATCH] spi: spidev: add Semtech SX1302 support
+
+diff --git a/Documentation/devicetree/bindings/trivial-devices.yaml b/Documentation/devicetree/bindings/trivial-devices.yaml
+index 58ff948d9..762c95047 100644
+--- a/Documentation/devicetree/bindings/trivial-devices.yaml
++++ b/Documentation/devicetree/bindings/trivial-devices.yaml
+@@ -365,6 +365,8 @@ properties:
+           - samsung,exynos-sataphy-i2c
+             # Semtech sx1301 baseband processor
+           - semtech,sx1301
++            # Semtech SX1302 LoRa concentrator
++          - semtech,sx1302
+             # Sensirion multi-pixel gas sensor with I2C interface
+           - sensirion,sgp30
+             # Sensirion gas sensor with I2C interface
+diff --git a/drivers/spi/spidev.c b/drivers/spi/spidev.c
+index 5300c942a..0b7c6e383 100644
+--- a/drivers/spi/spidev.c
++++ b/drivers/spi/spidev.c
+@@ -716,6 +716,7 @@ static const struct spi_device_id spidev_spi_ids[] = {
+ 	{ .name = /* rohm */ "bh2228fv" },
+ 	{ .name = /* rohm */ "dh2228fv" },
+ 	{ .name = /* semtech */ "sx1301" },
++	{ .name = /* semtech */ "sx1302" },
+ 	{ .name = /* silabs */ "em3581" },
+ 	{ .name = /* silabs */ "si3210" },
+ 	{},
+@@ -749,6 +750,7 @@ static const struct of_device_id spidev_dt_ids[] = {
+ 	{ .compatible = "rohm,bh2228fv", .data = &spidev_of_check },
+ 	{ .compatible = "rohm,dh2228fv", .data = &spidev_of_check },
+ 	{ .compatible = "semtech,sx1301", .data = &spidev_of_check },
++	{ .compatible = "semtech,sx1302", .data = &spidev_of_check },
+ 	{ .compatible = "silabs,em3581", .data = &spidev_of_check },
+ 	{ .compatible = "silabs,si3210", .data = &spidev_of_check },
+ 	{},
