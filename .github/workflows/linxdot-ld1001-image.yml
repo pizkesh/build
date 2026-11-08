@@ -1,0 +1,80 @@
+name: LD1001 image
+
+on:
+  push:
+    paths:
+      - "config/boards/linxdot-ld1001.csc"
+      - "patch/kernel/archive/rockchip64-6.18/board-linxdot-ld1001.patch"
+      - "patch/kernel/archive/rockchip64-6.18/drv-spi-spidev-add-sx1302.patch"
+      - "patch/u-boot/v2025.04/board_linxdot-ld1001/**"
+      - ".github/workflows/linxdot-ld1001-image.yml"
+  pull_request:
+    paths:
+      - "config/boards/linxdot-ld1001.csc"
+      - "patch/kernel/archive/rockchip64-6.18/board-linxdot-ld1001.patch"
+      - "patch/kernel/archive/rockchip64-6.18/drv-spi-spidev-add-sx1302.patch"
+      - "patch/u-boot/v2025.04/board_linxdot-ld1001/**"
+      - ".github/workflows/linxdot-ld1001-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # This workflow is for pizkesh/build only. Do not spend CI on other boards.
+    if: >-
+      github.repository_owner == 'pizkesh' &&
+      (github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+
+    steps:
+      - name: Reclaim runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /usr/local/share/powershell
+          sudo apt-get clean
+          docker system prune --all --force || true
+          df -h /
+          available_gb=$(df -BG --output=avail / | tail -n 1 | tr -dc '0-9')
+          if (( available_gb < 20 )); then
+            echo "Only ${available_gb} GB free; need at least 20 GB for the image build." >&2
+            exit 1
+          fi
+
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Remove stale LD1001 images
+        shell: bash
+        run: |
+          if [[ -d output/images ]]; then
+            find output/images -maxdepth 1 -type f \
+              -name '*Linxdot-ld1001*bookworm*current*minimal*.img*' -delete
+          fi
+
+      - name: Build LD1001 Bookworm minimal image
+        run: >-
+          ./compile.sh build
+          BOARD=linxdot-ld1001
+          BRANCH=current
+          RELEASE=bookworm
+          BUILD_MINIMAL=yes
+          KERNEL_CONFIGURE=no
+          KERNEL_BTF=no
+          KERNEL_GIT=shallow
+
+      - name: Record image checksum
+        shell: bash
+        run: |
+          shopt -s nullglob
+          images=(output/images/*Linxdot-ld1001*bookworm*current*minimal*.img)
+          if (( ${#images[@]} != 1 )); then
+            echo "Expected one LD1001 Bookworm minimal image; found ${#images[@]}" >&2
+            printf '%s\n' "${images[@]}" >&2
+            exit 1
+          fi
+          sha256sum "${images[0]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          ls -lh "${images[0]}" | tee -a "$GITHUB_STEP_SUMMARY"
